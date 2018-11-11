@@ -4,20 +4,19 @@
 #include <fcntl.h>
 #include <math.h>
 
-typedef uint8_t            u8;
-typedef unsigned short int u16;
-typedef unsigned int       u32;
-typedef uint64_t           u64;
+typedef uint8_t  u8;
+typedef uint64_t u64;
 
 #define file_len(x) (unsigned long)x
+#define b_64(x) 0x0000000000000000 | x
 #define N 4
 
-static u8 SbTab[16] = {0x7, 0xa, 0x2, 0xc, 0x4, 0x8, 0xf, 0x0, 0x5, 0x9, 0x1, 0xe, 0x3, 0xd, 0xb, 0x6};//Таблица S-блоков для n=4
+static u8 MDS_4[16] = {0x0, 0x8, 0x0, 0x4, 0x0, 0x2, 0x0, 0x1, 0x9, 0x0, 0xb, 0x0, 0xd, 0xd, 0xe, 0xe};//Матрица MDS для n=4
+static u8 SbTab_4[16] = {0x7, 0xa, 0x2, 0xc, 0x4, 0x8, 0xf, 0x0, 0x5, 0x9, 0x1, 0xe, 0x3, 0xd, 0xb, 0x6};//Таблица S-блоков для n=4
 
-static u8 xtime(u8);
-static u8 bmul(u8, u8);
 
-static u64 KeyShedule(u64, u64);//Генерация цикл. ключей
+static u64 Key_Matrix(u64, u8[]);//Функция умножения на матрицу MDS 
+static u64 *KeyShedule(u64[]);//Генерация цикл. ключей
 static u8 SboxByte(u8);//Функция преобразования S-блока для одного байта
 static u8 InTab(u64);//Функция преобразования информационного блока в 3D матрицу
 
@@ -26,25 +25,46 @@ static u8 SbLayer(u8);//Применение S-блоков к информац�
 static u8 MDSLayer(u8);//Применение операции рассеивания к информационному блоку
 static u8 Perm(u8);//Применение перестановки к информационному блоку
 
-void Cipher(u64, u64);//Функция шифрования
-void InvCipher(u64, u64);//Функция расшифрования
+static u64 Cipher(u64, u64);//Функция шифрования
+static u64 InvCipher(u64, u64);//Функция расшифрования
+
+static u64 Key_Matrix(u64 k, u8 mds[]) {
+	u64 x = 0xffffffffffffffff;
+	return x;
+}
+
+static u64 *KeyShedule(u64 key[2]) {
+	
+	u64 *keyRound = (u64*)malloc(16 * sizeof(u64));
+	keyRound[0] = key[1];
+	keyRound[1] = key[0]^b_64(1);
+	
+	for ( int i = 2; i <= 15; i++) {
+		u64 K_A = Key_Matrix(keyRound[i-1], MDS_4); 
+		keyRound[i] = K_A ^ keyRound[i-2] ^ b_64(i); 
+	}
+		
+	//printf("0x%lx\n",keyRound[5]);
+	return keyRound; 
+}
 
 static u8 SboxByte(u8 x) {
 	u8 a, b;
 	a = x>>4;
 	b = x&0x0f;
-	x = ( (SbTab[a]<<4) | (SbTab[b]) );
+	x = ( (SbTab_4[a]<<4) | (SbTab_4[b]) );
 	return x;
 }
 
 int main(int argc, char* argv[]) {
 
+	u64 key[2] = {0xfffffffffffffff0, 0x0000000000000000};
+	u64 *keytab = KeyShedule(key);
+	free(keytab);
+	
 	u8 *in[N][N][N];
 	u8 *out[N][N][N];
 
-	uint8_t x = 0x68;
-	x = SboxByte(x);
-	printf("0x%x \n", x);
 	FILE* stream_in;
 	FILE* stream_out;
 
@@ -70,20 +90,12 @@ int main(int argc, char* argv[]) {
 	unsigned long len;
 
 
-/*	char *array[4][4][4];
-	char *name = "plaintxt";
-	FILE *f = fopen( fname, "r");
-
-	for (int i = 0; i < 4; i++) {
+/*	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
 			for (int k = 0; k < 4; k++) {
-				//fread( fd, array[i][j][k], 1);
-				printf("%s ", array[i][j][k]);
 			}
-			printf("\n");
 		}
-		printf("\n");
 	}
-	fclose(f);*/
+*/
 }
 
