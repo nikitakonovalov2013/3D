@@ -21,8 +21,8 @@ static u64 *KeyShedule(u64[]);//Генерация цикл. ключей
 static u8 SboxByte(u8);//Функция преобразования S-блока для одного байта
 static u8 InTab(u64);//Функция преобразования информационного блока в 3D матрицу
 
-static u64 KeyAdd(u64, u64);//Добавление циклового ключа к информационному блоку
-static u8 SbLayer(u8);//Применение S-блоков к информационному блоку
+void KeyAdd(u64 *, u64 *, int);//Добавление циклового ключа к информационному блоку
+void SbLayer(u64 *);//Применение S-блоков к информационному блоку
 static u8 MDSLayer(u8);//Применение операции рассеивания к информационному блоку
 static u8 Perm(u8);//Применение перестановки к информационному блоку
 
@@ -46,7 +46,7 @@ static u64 Key_Matrix(u64 k, u64 MDS) {
 			result[i][j] = 0;
 		
 			for (int k = 0; k < 8; k++)
-				result[i][j] = result[i][j] + (key[i][k]*mds[k][j]);
+				result[i][j] += (key[i][k]*mds[k][j]);
 		
 			retval |= (u64)result[i][j];
 			retval <<= 1;
@@ -60,12 +60,12 @@ static u64 *KeyShedule(u64 key[2]) {
 	
 	u64 *keyRound = (u64*)malloc(16 * sizeof(u64));
 	keyRound[0] = key[1];
-	keyRound[1] = key[0]^b_64(1);
+	keyRound[1] = key[0]^(u64)(1);
 	
 	for (int i = 2; i <= 15; i++) {
 		u64 K_A = Key_Matrix(keyRound[i-1], MDS_4); 
-		keyRound[i] =K_A^keyRound[i-2]^b_64(i);
-		printf("0x%016lx\n",keyRound[i]);	
+		keyRound[i] =K_A^keyRound[i-2]^(u64)(i);
+		//printf("0x%016lx\n",keyRound[i]);	
 	}
 		
 	return keyRound; 
@@ -79,11 +79,40 @@ static u8 SboxByte(u8 x) {
 	return x;
 }
 
+void KeyAdd(u64 *word, u64 *keyRound, int round) {
+	
+	*word ^= keyRound[round];
+}
+
+void SbLayer(u64 *word) {
+
+	u64 _word = *word;
+	u64 retval = 0;
+	u8 wordtab[8];
+
+	for (int i =0; i < 8; i++) {
+		wordtab[i] = (u8)(_word>>56);
+		_word <<= 8;
+		wordtab[i] = SboxByte(wordtab[i]);
+		retval <<= 8;
+		retval |= (u64)(wordtab[i]);
+		printf("0x%016lx\n",retval);
+	}
+	
+	*word = retval;
+		
+}
+
 int main(int argc, char* argv[]) {
 
 	u64 key[2] = {0x0001020304050607, 0x08090a0b0c0d0e0f};
 	u64 *keytab = KeyShedule(key);
 	free(keytab);
+
+	u64 x = b_64(0);
+	KeyAdd(&x, keytab, 1);
+	SbLayer(&x);
+	printf("\n0x%016lx\n",x);
 
 	u8 *in[N][N][N];
 	u8 *out[N][N][N];
